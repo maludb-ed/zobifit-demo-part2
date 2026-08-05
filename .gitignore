@@ -1,5 +1,7 @@
-# Local secrets — never commit. Generated at deploy time (see scripts/verify-db.php).
+# Local secrets — never commit. Generated at deploy time.
+# config/ holds credentials and keys only; nothing in it belongs in git.
 /config/database.php
+/config/app.php
 /config/*.local.php
 
 # Machine-local Claude Code permissions
@@ -8,3 +10,6 @@
 # PHP / editor noise
 *.log
 .DS_Store
+
+# Composer dependencies
+/vendor/
