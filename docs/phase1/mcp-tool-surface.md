@@ -7,14 +7,20 @@ FastMCP, streamable HTTP, systemd + Apache reverse proxy at
 in the action manifest, not here. The Phase 0 question list is the contract; this document
 is complete only if every §2 question maps to a tool.
 
-DB roles: `zobifit_mcp_records_ro` and `zobifit_mcp_activity_ro` — SELECT-only,
-`default_transaction_read_only`, 5 s statement timeout (db/control/001_roles.sql).
+DB roles — **unresolved, blocks Phase 4.** The original design gave each server its own
+cluster role (`zobifit_mcp_records_ro`, `zobifit_mcp_activity_ro`) with SELECT-only grants,
+`default_transaction_read_only`, and a 5 s statement timeout. The tenancy model is now one
+dedicated cluster per tenant with a single `app` role, so those roles no longer exist. Since
+these endpoints are exposed to the tenant's own AI tools, read-only must remain a *privilege*
+boundary, not a convention — options are listed at the bottom of `db/control/001_roles.sql`.
+
 Every tool: `readOnlyHint: true`, pydantic input models with `extra="forbid"`, limit/offset
 pagination, actionable error messages. Every tool call logs to `activity_log`.
 
-Authorization inside a tenant: a token maps to the tenant (database-level isolation — SaaS
-Plus+). Client-scoped tools take `client` as a name or id, resolved server-side; when the
-caller's token is client-issued, tools are locked to that client's id.
+Authorization inside a tenant: a token maps to the tenant (cluster-level isolation — SaaS
+Plus+, stronger than the database-level isolation originally planned). Client-scoped tools
+take `client` as a name or id, resolved server-side; when the caller's token is client-issued,
+tools are locked to that client's id.
 
 ## Record server — `zobifit_records_mcp` (PostgreSQL)
 
@@ -126,5 +132,6 @@ caller's token is client-issued, tools are locked to that client's id.
 | When did coach last update my plan (A) | `get_record_history` |
 
 **Admin questions** (tenant counts, catalog completeness, tenant usage) are served by admin
-screens over `zobifit_control` + per-tenant connections — the admin is not a tenant-MCP
-consumer in v1. Revisit if a control-plane MCP earns its keep.
+screens on the platform control cluster, which reaches each tenant cluster over its own
+connection — the admin is not a tenant-MCP consumer in v1. Revisit if a control-cluster MCP
+earns its keep.

@@ -1,0 +1,10 @@
+# Local secrets — never commit. Generated at deploy time (see scripts/verify-db.php).
+/config/database.php
+/config/*.local.php
+
+# Machine-local Claude Code permissions
+**/.claude/settings.local.json
+
+# PHP / editor noise
+*.log
+.DS_Store

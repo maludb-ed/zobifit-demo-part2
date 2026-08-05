@@ -1,4 +1,4 @@
--- zobifit_control: master catalogs, admin-managed, synced into every tenant database.
+-- Master catalogs: admin-managed, synced in from the platform control cluster.
 -- Sync contract (db/README.md): tenant copies match on master id; is_active=false
 -- propagates instead of deletion; updated_at drives incremental sync.
 

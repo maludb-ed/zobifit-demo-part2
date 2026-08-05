@@ -1,9 +1,9 @@
 # Build spec: admin-catalogs slice (EXEMPLAR)
 
 Built by the planning-class model; becomes the canonical reference every later slice
-replicates. Runs in the **admin app** (`admin.zobifit.com`, `zobifit_control` DB).
-Five catalog entities, one repeated CRUD pattern; `muscle-group` is the canonical entity,
-the others substitute.
+replicates. Runs in the **admin app** (`admin.zobifit.com`) against the `master_*` tables in
+this cluster's `app` schema. Five catalog entities, one repeated CRUD pattern; `muscle-group`
+is the canonical entity, the others substitute.
 
 Schema tables: master_muscle_groups, master_equipment, master_exercises,
 master_exercise_muscles, master_foods, master_measurement_types — never modify them.

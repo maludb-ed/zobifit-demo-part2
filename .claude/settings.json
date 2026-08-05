@@ -1,0 +1,6 @@
+{
+  "enabledPlugins": {
+    "htmx-php-builder@maludb-ed": true,
+    "preserve-the-evidence@preserve-the-evidence": true
+  }
+}

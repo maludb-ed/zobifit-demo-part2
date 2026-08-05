@@ -1,4 +1,4 @@
--- zobifit_control: platform administrators.
+-- Platform administrators (the Zobifit operator, not the coaching business).
 -- Auth structures per the php-session-auth skill: nullable password_hash (Google-only
 -- accounts), auth_identities keyed on the provider 'sub', TOTP columns + recovery codes.
 

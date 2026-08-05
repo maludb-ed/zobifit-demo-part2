@@ -11,7 +11,7 @@
 --     index activity_log_pending_idx makes this cheap).
 --   * The ingestion job (systemd timer, runs continuously) ships each batch into MaluDB,
 --     then stamps ingested_at. At-least-once semantics; MaluDB dedupes on (tenant, id).
---   * The job runs per tenant database and also covers zobifit_control's activity_log.
+--   * The job runs against this cluster's single activity_log table.
 --   * Nothing ever deletes from activity_log; retention/pruning is a MaluDB-side concern
 --     after ingestion (activity memory cannot be backfilled — the log is the source).
 

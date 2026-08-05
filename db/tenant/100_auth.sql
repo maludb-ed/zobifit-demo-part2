@@ -1,6 +1,6 @@
 -- Tenant database: users and authentication.
 -- One database per tenant (SaaS Plus+); roles here are owner/coach/client. Platform
--- admins live in zobifit_control, never here.
+-- admins live in the `admins` table (control/010_admins.sql), never here.
 -- Auth structures per the php-session-auth skill: nullable password_hash, auth_identities
 -- on the Google 'sub', TOTP columns + recovery codes. Invite-only in v1: users are
 -- created by invitation, never self-registered.

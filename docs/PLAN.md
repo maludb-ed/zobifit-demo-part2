@@ -1,9 +1,10 @@
 # Zobifit — Memory-First Plan
 
 Zobifit is a fitness and diet coaching platform. A **coaching business is the client** (B2B2C):
-each coach or training business is a tenant with its own dedicated PostgreSQL database and its
-own MCP endpoints (SaaS Plus+ — sovereign data). The coach's athletes are users inside that
-tenant. Coaches prescribe training programs and nutrition goals; clients log workouts and
+each coach or training business is a tenant with its own dedicated PostgreSQL **server cluster**
+and its own MCP endpoints (SaaS Plus+ — sovereign data). Within that cluster there is one
+database, one `app` schema, and one `app` role; the cluster itself is the tenant boundary, so
+isolation is physical rather than logical. The coach's athletes are users inside that tenant. Coaches prescribe training programs and nutrition goals; clients log workouts and
 food; both sides ask the system how it's going. Every screen carries a voice-first chat
 command bar: users dictate what they want recorded or where they want to go, and the
 assistant navigates and does the data entry on their behalf.
@@ -88,7 +89,7 @@ The long tail neither list anticipates is the AMA agent's job — same memories,
 
 Entities in domain language. Current truth, edited in place.
 
-### Master catalogs (control-plane, admin-managed; seeded into each tenant database)
+### Master catalogs (platform-managed; seeded into each tenant cluster)
 
 - **Muscle group** — the admin-defined taxonomy (chest, lats, quads, hamstrings…). The axis
   for all muscle scoring.
@@ -104,9 +105,10 @@ Entities in domain language. Current truth, edited in place.
 - **Measurement type (catalog)** — the standard body measurements and the DEXA measurement
   set, with units (detail under *Measurements & goals* below).
 
-*Architecture note:* catalogs live in the control plane and are copied into tenant databases at
-provisioning; catalog updates propagate by a sync job. Tenant- and client-created entries live
-only in the tenant database, marked by provenance (catalog / tenant / client).
+*Architecture note:* catalogs are authored on the platform control cluster and copied into each
+tenant cluster's `app` schema at provisioning; catalog updates propagate by a sync job. Tenant-
+and client-created entries live only in that tenant's cluster, marked by provenance
+(catalog / tenant / client).
 
 ### People & access (per tenant)
 
@@ -337,15 +339,20 @@ when its screens work at 375 px, log activity, and are registered in the action 
 0. **Environment & connectivity gate** — before *any* application building (before the
    Phase 1 schema is applied, and long before Phase 2 PHP): verify the target environment
    end-to-end on the Ubuntu 24.04 host —
-   - PostgreSQL 17 installed, running, and accepting connections; control-plane and a first
-     tenant database can be created;
+   - PostgreSQL 17 installed, running, and accepting connections; the `app` role connects to
+     the `maludb` database and the `app` schema accepts DDL;
    - PHP with `pdo_pgsql` connects and round-trips a query (a checked-in smoke-test script,
-     e.g. `scripts/verify-db.php`, that prints `SELECT version()` and a test write/read/delete
+     `scripts/verify-db.php`, that prints `SELECT version()` and a test write/read/delete
      on a scratch table);
-   - MaluDB extensions install cleanly and the log-ingestion path is writable;
+   - MaluDB extensions are installed and the log-ingestion path is writable;
    - Apache serves PHP.
    Nothing else starts until this gate passes — a connectivity problem found here costs
    minutes; found mid-Phase-2 it poisons every diagnosis that follows.
+
+   **Status: PASSED 2026-08-05** — 6/6 checks from both the CLI and Apache
+   (`apache2handler`): PostgreSQL 17.10, PHP 8.3.6 with `pdo_pgsql`, `app@maludb`,
+   `search_path = app, maludb_core, public`, scratch-table write/read/delete, and
+   `maludb_core` 0.104.0. Re-runnable: `php scripts/verify-db.php`.
 
 1. **Admin catalogs** — muscle groups, equipment, exercise library + weightings, measurement
    types, food database. First because nearly everything references a catalog.
@@ -371,10 +378,13 @@ replications per their Phase 1 build specs.
 Per the plugin's tech stack — complexity is earned, not assumed:
 
 - **Ubuntu 24.04 LTS** (corrected from "20.40.4"; 20.04 is EOL for standard support)
-- **PostgreSQL 17** — one cluster; control-plane database (tenant registry with status +
-  plan tier, master catalogs, admin users) + a dedicated database per tenant. Billing is out
-  of scope for v1 but attaches here later, keyed by tenant id (§9.10)
-- **MaluDB** — activity memory, fed by the log ingestion job
+- **PostgreSQL 17** — **one dedicated cluster per tenant**; inside it one `maludb` database,
+  one `app` schema, one `app` role. Platform-level tables (tenant identity row with status +
+  plan tier, master catalogs, admin users) share that schema. The platform-wide registry of
+  all tenants lives on a separate control cluster that provisions these deployments. Billing
+  is out of scope for v1 but attaches to the control cluster later, keyed by tenant (§9.10)
+- **MaluDB** — activity memory, fed by the log ingestion job; its extensions are installed in
+  the same database, so record memory and activity memory share one connection
 - **Apache + PHP + HTMX + Bootstrap 5.3** — server-rendered per the plugin's design system and
   PHP patterns; login/session per php-session-auth
 - **Chart.js** — the single charting library for all graphs (§7); served locally, initialized
@@ -398,8 +408,10 @@ Per the plugin's tech stack — complexity is earned, not assumed:
 5. ~~Client self-service goals~~ — **resolved**: clients can set their own nutrition goals
    (by screen or by voice); coaches see changes via goal history and the activity log.
    A per-tenant "coach-approval required" switch can come later if a coaching business asks.
-6. **Catalog sync mechanics** — how control-plane catalog updates propagate to tenant
-   databases (job cadence, conflict rules with tenant customizations).
+6. **Catalog sync mechanics** — how control-cluster catalog updates propagate to tenant
+   clusters (job cadence, conflict rules with tenant customizations). Related: now that
+   `master_*` and the working catalog tables share one schema, whether to collapse them
+   into single provenance-tagged tables (see db/README.md).
 7. **Units** — metric, imperial, or per-client preference?
 8. **DEXA entry method** — manual entry of scan numbers in v1; importing a provider's PDF
    report is a later convenience.
@@ -408,13 +420,13 @@ Per the plugin's tech stack — complexity is earned, not assumed:
    nutrition-goals system. Revisit once training programs are proven.
 10. ~~Tenant billing~~ — **out of scope for this version** (decision 2026-08-05), but the
     database is shaped so it bolts on later without migration pain:
-    - Billing is strictly a **control-plane concern**, keyed by tenant id. Adding it later
-      means new control-plane tables (subscription, plan, invoice) referencing the tenant
-      registry — **no tenant database ever changes**, because no billing data ever lives in
-      one.
-    - The tenant registry carries a **status** (trial / active / suspended) and a **plan
-      tier** field from day one — operationally useful now (provisioning, admin dashboard,
-      access gating) and exactly the seam a payment provider hooks into later.
+    - Billing is strictly a **control-cluster concern**, keyed by tenant. Adding it later
+      means new tables (subscription, plan, invoice) on the control cluster referencing its
+      tenant registry — **no tenant cluster ever changes**, because no billing data ever
+      lives in one.
+    - Each tenant's identity row carries a **status** (trial / active / suspended) and a
+      **plan tier** field from day one — operationally useful now (provisioning, admin
+      dashboard, access gating) and exactly the seam a payment provider hooks into later.
     - Client-facing code never checks billing directly; it checks tenant status — so wiring
       Stripe in later changes what *sets* the status, not what *reads* it.
 
