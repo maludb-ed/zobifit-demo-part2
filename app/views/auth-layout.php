@@ -24,6 +24,9 @@ $title = $title ?? 'Sign in';
     <link rel="stylesheet" type="text/css" href="/assets/css/bootstrap.min.css">
     <link rel="stylesheet" type="text/css" href="/assets/vendors/css/vendors.min.css">
     <link rel="stylesheet" type="text/css" href="/assets/css/theme.min.css">
+    <!-- Auth pages keep ordinary page scrolling — no fixed chrome to scroll
+         under — but take the shared scrollbar appearance and reserved gutter. -->
+    <link rel="stylesheet" type="text/css" href="/assets/css/app-shell.css">
 </head>
 
 <body>

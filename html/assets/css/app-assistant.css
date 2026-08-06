@@ -7,22 +7,16 @@
  * variables are overridden and no existing selector is touched — everything
  * inside uses stock Bootstrap components.
  *
+ * Shell metrics (--assistant-bar-height, --shell-left) and the bar's fixed
+ * height live in app-shell.css, which owns the scroll model. This file only
+ * describes the bar itself.
+ *
  * Loaded after theme.min.css so the fixed positioning wins.
  */
-
-:root {
-    --assistant-bar-height: 60px;
-}
-
-/* Reserve space so the bar never covers the end of page content. */
-body {
-    padding-bottom: var(--assistant-bar-height);
-}
 
 .assistant-bar {
     position: fixed;
     bottom: 0;
-    left: 0;
     right: 0;
     z-index: 1030;              /* above content, below Bootstrap modals/offcanvas */
     padding: 10px 16px;
@@ -61,8 +55,6 @@ body {
 /* The latest exchange expands upward from the bar. */
 .assistant-reply {
     position: fixed;
-    bottom: var(--assistant-bar-height);
-    left: 0;
     right: 0;
     z-index: 1029;
     max-height: 40vh;
@@ -77,35 +69,6 @@ body {
 .assistant-reply-inner {
     max-width: 1100px;
     margin: 0 auto 8px;
-}
-
-/*
- * Align the bar with the CONTENT edge (main.nxl-container), not the sidebar.
- *
- * Measured against the theme rather than assumed: the sidebar is 280px
- * expanded and 100px collapsed (html.minimenu), but .nxl-container only takes
- * that left margin at >=1200px. Between 1025px and 1199px the theme leaves the
- * container at margin-left:0 even though the sidebar is still on screen, so
- * following the container is what keeps the bar flush with the content above it.
- * Below 1025px the sidebar is off-canvas and the bar spans the full width.
- */
-@media (min-width: 1200px) {
-    .assistant-bar,
-    .assistant-reply {
-        left: 280px;
-    }
-}
-
-/*
- * The collapsed sidebar keeps its 100px offset all the way down to the
- * off-canvas breakpoint, even in the 1025-1199px band where the expanded
- * container has already dropped to 0. Declared last so it wins in both bands.
- */
-@media (min-width: 1025px) {
-    html.minimenu .assistant-bar,
-    html.minimenu .assistant-reply {
-        left: 100px;
-    }
 }
 
 /* Full-width transcript on mobile, per the no-modal / mobile-first rules. */

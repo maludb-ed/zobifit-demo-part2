@@ -1,0 +1,216 @@
+/*
+ * Shell scroll model: independent scrolling panes with always-visible scrollbars.
+ *
+ * DESIGN DECISION (2026-08-06, user-approved): the page itself never scrolls.
+ * The header, sidebar and command bar are fixed chrome; the sidebar nav and the
+ * content region each own a vertical scrollbar, and that scrollbar is always
+ * rendered rather than appearing on demand.
+ *
+ * Why always-visible: a scrollbar that appears only when needed shifts the
+ * layout sideways by ~15px the moment a list grows long enough, and gives no
+ * hint that a region scrolls until the user tries. Reserving the gutter costs
+ * a fixed strip and removes both problems.
+ *
+ * Why panes rather than page scroll: with fixed chrome on three edges, page
+ * scrolling means content passes underneath the header and the command bar, and
+ * the bottom of every screen has to be protected by padding that must be kept
+ * in sync with the bar's real height by hand. Anchoring the content pane
+ * between them makes that structural instead.
+ *
+ * Scoped to `body.app-shell`, so the minimal auth pages keep ordinary page
+ * scrolling (they are short, centred cards with no fixed chrome) while still
+ * getting the always-visible gutter from the last section here.
+ *
+ * Loaded after theme.min.css so these win.
+ */
+
+:root {
+    /*
+     * Shell metrics. These are the theme's real measured values, not guesses:
+     * header 80px, sidebar 280px expanded / 100px collapsed. The command bar
+     * height is ENFORCED below rather than observed, so this number stays true.
+     */
+    --shell-header-height: 80px;
+    --shell-left: 0px;
+    --assistant-bar-height: 68px;
+
+    /* Scrollbar sizing. Change --shell-scrollbar-width in one place and every
+       scrolling region follows; the thumb inset scales with it. */
+    --shell-scrollbar-width: 18px;
+    --shell-scrollbar-inset: 3px;
+    --shell-scrollbar-track: #f1f3f9;
+    --shell-scrollbar-thumb: #b3bbcd;
+    --shell-scrollbar-thumb-hover: #939db6;
+}
+
+html.app-skin-dark {
+    --shell-scrollbar-track: #1b2431;
+    --shell-scrollbar-thumb: #3b4757;
+    --shell-scrollbar-thumb-hover: #4d5b6e;
+}
+
+/* ---------------------------------------------------------------------------
+ * The page itself does not scroll.
+ * ------------------------------------------------------------------------ */
+
+body.app-shell {
+    height: 100vh;
+    overflow: hidden;
+    /* No bottom padding needed any more: the content pane is anchored above
+       the command bar rather than padded away from it. */
+    padding-bottom: 0;
+}
+
+/* ---------------------------------------------------------------------------
+ * The content pane — the main scrolling region.
+ * ------------------------------------------------------------------------ */
+
+body.app-shell main.nxl-container {
+    position: fixed;
+    top: var(--shell-header-height);
+    bottom: var(--assistant-bar-height);
+    left: var(--shell-left);
+    right: 0;
+    margin-left: 0;                 /* the theme's margin is replaced by `left` */
+    /*
+     * The theme sets min-height: calc(100vh - 80px). Inside a pane anchored
+     * between the header and the command bar that is 68px TALLER than the slot,
+     * so the box overflowed past the bar and the last rows sat behind it.
+     * The pane is sized by its offsets now, so the floor has to go.
+     */
+    min-height: 0;
+    overflow-y: scroll;             /* always render the scrollbar */
+    overflow-x: hidden;             /* never a horizontal one — mobile rule */
+    scrollbar-gutter: stable;
+}
+
+/* ---------------------------------------------------------------------------
+ * The sidebar nav — its own scrollbar.
+ *
+ * The theme puts PerfectScrollbar on .navbar-content, which sets overflow
+ * hidden and draws its own rails that stay invisible until hover. That is the
+ * behaviour being replaced, so the rails are hidden and native scrolling is
+ * forced. PerfectScrollbar's JS keeps working harmlessly on top of it.
+ * ------------------------------------------------------------------------ */
+
+body.app-shell .navbar-content {
+    overflow-y: scroll !important;
+    overflow-x: hidden !important;
+    scrollbar-gutter: stable;
+}
+
+body.app-shell .navbar-content > .ps__rail-y,
+body.app-shell .navbar-content > .ps__rail-x {
+    display: none !important;
+}
+
+/* ---------------------------------------------------------------------------
+ * The command bar is a fixed height, so --assistant-bar-height is the single
+ * source of truth. Previously the bar was sized by its input (46.27px) plus
+ * padding, which rendered 67.27px against 60px reserved — content could sit
+ * behind it. Now the variable defines the box and the contents fit inside.
+ * ------------------------------------------------------------------------ */
+
+.assistant-bar {
+    height: var(--assistant-bar-height);
+    box-sizing: border-box;
+}
+
+.assistant-bar-form {
+    height: 100%;
+}
+
+/* The reply strip stacks directly on top of the bar. */
+.assistant-reply {
+    bottom: var(--assistant-bar-height);
+}
+
+/* ---------------------------------------------------------------------------
+ * Offcanvas panels (the assistant transcript) scroll their own body.
+ * ------------------------------------------------------------------------ */
+
+.offcanvas-body {
+    overflow-y: scroll;
+    scrollbar-gutter: stable;
+}
+
+/* ---------------------------------------------------------------------------
+ * Shell offsets per breakpoint.
+ *
+ * Measured against the theme rather than assumed: the sidebar is off-canvas
+ * below 1025px; .nxl-container only takes the 280px offset at >=1200px; and the
+ * collapsed (html.minimenu) 100px offset applies all the way down to 1025px.
+ * Both the content pane and the command bar read --shell-left, so they cannot
+ * drift apart the way they did when each carried its own copy of the numbers.
+ * ------------------------------------------------------------------------ */
+
+@media (min-width: 1200px) {
+    :root { --shell-left: 280px; }
+}
+
+@media (min-width: 1025px) {
+    html.minimenu { --shell-left: 100px; }
+}
+
+.assistant-bar,
+.assistant-reply {
+    left: var(--shell-left);
+}
+
+/* ---------------------------------------------------------------------------
+ * Scrollbar appearance — every scrolling region, including the auth pages and
+ * any region a Phase 3 slice introduces.
+ * ------------------------------------------------------------------------ */
+
+/* Non-shell pages (auth) keep page scrolling, with the gutter reserved so the
+   layout never shifts when the card grows. */
+html:not(:has(body.app-shell)) {
+    overflow-y: scroll;
+    scrollbar-gutter: stable;
+}
+
+/*
+ * IMPORTANT — these two mechanisms are mutually exclusive, not complementary.
+ *
+ * Chrome 121+ supports the standard `scrollbar-width` / `scrollbar-color`, and
+ * when either is set it IGNORES every ::-webkit-scrollbar-* rule. Declaring
+ * both globally silently threw away the custom width and left Chrome's 15px
+ * default. So the standard properties are confined to engines that have no
+ * ::-webkit-scrollbar support (Firefox), and WebKit/Blink get the pixel-exact
+ * pseudo-element styling below.
+ */
+@supports not selector(::-webkit-scrollbar) {
+    * {
+        /* Firefox takes no pixel width; `auto` is its full-width native bar.
+           `thin` would undercut the point of making these easy to grab. */
+        scrollbar-width: auto;
+        scrollbar-color: var(--shell-scrollbar-thumb) var(--shell-scrollbar-track);
+    }
+}
+
+/* WebKit / Blink */
+::-webkit-scrollbar {
+    width: var(--shell-scrollbar-width);
+    height: var(--shell-scrollbar-width);
+}
+
+::-webkit-scrollbar-track {
+    background: var(--shell-scrollbar-track);
+}
+
+::-webkit-scrollbar-thumb {
+    background: var(--shell-scrollbar-thumb);
+    border-radius: 8px;
+    /* Inset the thumb from the track so a wide bar still looks deliberate
+       rather than like a solid slab. */
+    border: var(--shell-scrollbar-inset) solid var(--shell-scrollbar-track);
+    background-clip: padding-box;
+}
+
+::-webkit-scrollbar-thumb:hover {
+    background: var(--shell-scrollbar-thumb-hover);
+}
+
+::-webkit-scrollbar-corner {
+    background: var(--shell-scrollbar-track);
+}

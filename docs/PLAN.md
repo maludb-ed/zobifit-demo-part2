@@ -324,6 +324,20 @@ or action missing from the manifest is unreachable by voice — unfinished desig
 | Command bar | all | on every screen: "take me there" / "record this for me" — navigation and voice data entry (§6) |
 | AMA page | all | the long tail, via the assistant |
 
+**Scrolling standard: independent panes, always-visible scrollbars** (decision
+2026-08-06). The page itself never scrolls. The header, sidebar and command bar
+are fixed chrome; the sidebar navigation and the content region each own a
+vertical scrollbar, and that scrollbar is always rendered rather than appearing
+on demand — a bar that comes and goes shifts the layout sideways and hides the
+fact that a region scrolls at all. Scrollbars are widened to 18 px (Chrome's
+default is 15 px) so they are easy to grab. The content pane is anchored between
+the header and the command bar, so no screen can hide content behind fixed
+chrome and no screen needs bottom padding kept in sync by hand. Implemented once
+in the Phase 2 shell (`html/assets/css/app-shell.css`) so every slice inherits
+it; the width, colours and shell metrics are CSS custom properties, changed in
+one place. The minimal auth pages keep ordinary page scrolling — they have no
+fixed chrome — but share the scrollbar appearance.
+
 **Charting standard: Chart.js** (bundled locally, no CDN). Every graph in the app uses it —
 measurement trends vs. goal, per-exercise progression, session volume trends, muscle-balance
 views, and the dashboards' summary charts. Because screens load as HTMX partials, chart

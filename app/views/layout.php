@@ -43,12 +43,15 @@ $pageInitJs     = $pageInitJs     ?? [];
 <?php endforeach; ?>
     <!-- theme.min.css ALWAYS last of the theme chain: it overrides the vendor bundle. -->
     <link rel="stylesheet" type="text/css" href="/assets/css/theme.min.css">
-    <!-- Command-bar positioning only; the theme ships no styles for a component
-         the design system nonetheless mandates on every screen. -->
+    <!-- App layer, after the theme: the shell's scroll model, then the command
+         bar the theme ships no styles for. -->
+    <link rel="stylesheet" type="text/css" href="/assets/css/app-shell.css">
     <link rel="stylesheet" type="text/css" href="/assets/css/app-assistant.css">
 </head>
 
-<body>
+<!-- .app-shell opts this page into the fixed-chrome / scrolling-pane model.
+     The minimal auth pages deliberately do not carry it. -->
+<body class="app-shell">
     <?= view('partials/sidebar.php', ['user' => $user]) ?>
     <?= view('partials/header.php', ['user' => $user]) ?>
 
